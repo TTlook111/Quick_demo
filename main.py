@@ -2,6 +2,8 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.routes.query import router as query_router
 
 app = FastAPI(
@@ -19,13 +21,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 注册路由
+# 注册 API 路由
 app.include_router(query_router, prefix="/api", tags=["查询"])
+
+# 托管静态文件
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")
 async def root():
-    return {"message": "NL2SQL Demo API", "docs": "/docs"}
+    """返回前端页面"""
+    return FileResponse("static/index.html")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NL2SQL Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+
+        .input-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 24px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: #4f46e5;
+        }
+
+        button {
+            padding: 12px 28px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background: #4338ca;
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .examples {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .examples span {
+            font-size: 12px;
+            color: #666;
+            line-height: 28px;
+        }
+
+        .example-btn {
+            padding: 4px 12px;
+            background: #f0f0ff;
+            color: #4f46e5;
+            border: 1px solid #e0e0ff;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .example-btn:hover {
+            background: #e0e0ff;
+        }
+
+        .result-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            display: none;
+        }
+
+        .result-section.visible {
+            display: block;
+        }
+
+        .sql-block {
+            background: #1e1e2e;
+            color: #a6e3a1;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 13px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .sql-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-top: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f8f9fa;
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #555;
+        }
+
+        tr:hover td {
+            background: #f8f9ff;
+        }
+
+        .meta {
+            margin-top: 12px;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 16px;
+            border-radius: 8px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #4f46e5;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 NL2SQL Demo</h1>
+        <p class="subtitle">用自然语言查询数据库，AI 帮你生成 SQL</p>
+
+        <div class="input-section">
+            <div class="input-group">
+                <input type="text" id="question" placeholder="输入你的问题，例如：薪资最高的3个人是谁？" />
+                <button id="submit-btn" onclick="submitQuery()">查询</button>
+            </div>
+            <div class="examples">
+                <span>试试：</span>
+                <button class="example-btn" onclick="fillExample(this)">技术部有多少人？</button>
+                <button class="example-btn" onclick="fillExample(this)">薪资最高的3个人是谁？</button>
+                <button class="example-btn" onclick="fillExample(this)">每个部门的平均薪资是多少？</button>
+                <button class="example-btn" onclick="fillExample(this)">今年的订单总金额</button>
+            </div>
+        </div>
+
+        <div class="result-section" id="result">
+            <!-- 动态内容 -->
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('question');
+        const resultDiv = document.getElementById('result');
+        const submitBtn = document.getElementById('submit-btn');
+
+        // 回车提交
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitQuery();
+        });
+
+        function fillExample(btn) {
+            input.value = btn.textContent;
+            input.focus();
+        }
+
+        async function submitQuery() {
+            const question = input.value.trim();
+            if (!question) return;
+
+            // 显示加载状态
+            resultDiv.className = 'result-section visible';
+            resultDiv.innerHTML = '<div class="loading">AI 正在生成 SQL 并查询</div>';
+            submitBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question }),
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || '请求失败');
+                }
+
+                const data = await res.json();
+                renderResult(data);
+            } catch (e) {
+                resultDiv.innerHTML = `<div class="error">❌ ${e.message}</div>`;
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        function renderResult(data) {
+            let html = '';
+
+            // SQL 展示
+            html += `<div class="sql-label">生成的 SQL</div>`;
+            html += `<div class="sql-block">${escapeHtml(data.generated_sql)}</div>`;
+
+            // 表格
+            if (data.rows.length > 0) {
+                html += `<div class="table-wrapper"><table>`;
+                html += `<thead><tr>${data.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>`;
+                html += `<tbody>`;
+                for (const row of data.rows) {
+                    html += `<tr>${data.columns.map(c => `<td>${escapeHtml(String(row[c] ?? ''))}</td>`).join('')}</tr>`;
+                }
+                html += `</tbody></table></div>`;
+                html += `<div class="meta">共 ${data.row_count} 条结果</div>`;
+            } else {
+                html += `<div class="meta">查询成功，但没有匹配的数据。</div>`;
+            }
+
+            resultDiv.innerHTML = html;
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+    </script>
+</body>
+</html>
