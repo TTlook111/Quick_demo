@@ -1,7 +1,12 @@
 """数据库连接 + Schema 获取"""
 
+import os
+from pathlib import Path
 from sqlalchemy import create_engine, inspect, text
 from app.config import settings
+
+# 确保 data 目录存在
+os.makedirs("data", exist_ok=True)
 
 engine = create_engine(settings.DATABASE_URL, echo=False)
 

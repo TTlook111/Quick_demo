@@ -15,6 +15,9 @@ uv.lock
 # Environment
 .env
 
+# Database files
+data/
+
 # Database
 *.db
 
