@@ -1,5 +1,13 @@
 [project]
 name = "nl2sql-demo"
 version = "0.1.0"
+description = "Natural Language to SQL - 通过自然语言生成安全 SQL 并执行"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "sqlalchemy>=2.0.0",
+    "sqlparse>=0.5.0",
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+]

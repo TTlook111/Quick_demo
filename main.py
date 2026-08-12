@@ -1,16 +1,33 @@
-# 这是一个示例 Python 脚本。
+"""NL2SQL Demo - FastAPI 入口"""
 
-# 按 Shift+F10 执行或将其替换为您的代码。
-# 按 双击 Shift 在所有地方搜索类、文件、工具窗口、操作和设置。
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.routes.query import router as query_router
+
+app = FastAPI(
+    title="NL2SQL Demo",
+    description="通过自然语言生成安全 SQL 并执行，返回查询结果",
+    version="0.1.0",
+)
+
+# 跨域配置（开发阶段允许所有）
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 注册路由
+app.include_router(query_router, prefix="/api", tags=["查询"])
 
 
-def print_hi(name):
-    # 在下面的代码行中使用断点来调试脚本。
-    print(f'Hi, {name}')  # 按 Ctrl+F8 切换断点。
+@app.get("/")
+async def root():
+    return {"message": "NL2SQL Demo API", "docs": "/docs"}
 
 
-# 按装订区域中的绿色按钮以运行脚本。
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# 访问 https://www.jetbrains.com/help/pycharm/ 获取 PyCharm 帮助
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
