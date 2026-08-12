@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NL2SQL Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -12,36 +13,54 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
             background: #f5f7fa;
             min-height: 100vh;
             padding: 40px 20px;
         }
 
         .container {
-            max-width: 900px;
+            max-width: 960px;
             margin: 0 auto;
         }
 
-        h1 {
+        /* Header */
+        .header {
             text-align: center;
-            color: #1a1a2e;
-            margin-bottom: 8px;
+            margin-bottom: 40px;
+        }
+
+        .header-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #4f46e5, #06b6d4);
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(79, 70, 229, 0.25);
+        }
+
+        h1 {
             font-size: 28px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 6px;
         }
 
         .subtitle {
-            text-align: center;
             color: #666;
-            margin-bottom: 40px;
             font-size: 14px;
         }
 
-        .input-section {
+        /* 输入卡片 */
+        .input-card {
             background: white;
-            border-radius: 12px;
+            border-radius: 14px;
             padding: 24px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
             margin-bottom: 24px;
         }
 
@@ -50,200 +69,328 @@
             gap: 12px;
         }
 
-        input[type="text"] {
+        .input-wrapper {
             flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
+            position: relative;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 13px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
             font-size: 15px;
-            transition: border-color 0.2s;
+            color: #1a1a2e;
+            transition: all 0.2s;
             outline: none;
+        }
+
+        input[type="text"]::placeholder {
+            color: #9ca3af;
         }
 
         input[type="text"]:focus {
             border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
-        button {
-            padding: 12px 28px;
+        .submit-btn {
+            padding: 13px 28px;
             background: #4f46e5;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 15px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
             white-space: nowrap;
         }
 
-        button:hover {
+        .submit-btn:hover {
             background: #4338ca;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
         }
 
-        button:disabled {
+        .submit-btn:disabled {
             background: #9ca3af;
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
 
+        /* 示例 */
         .examples {
-            margin-top: 12px;
+            margin-top: 14px;
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
-        .examples span {
+        .examples-label {
             font-size: 12px;
-            color: #666;
-            line-height: 28px;
+            color: #9ca3af;
         }
 
-        .example-btn {
-            padding: 4px 12px;
+        .example-chip {
+            padding: 5px 12px;
             background: #f0f0ff;
             color: #4f46e5;
             border: 1px solid #e0e0ff;
             border-radius: 16px;
             font-size: 12px;
             cursor: pointer;
+            transition: all 0.15s;
         }
 
-        .example-btn:hover {
+        .example-chip:hover {
             background: #e0e0ff;
+            transform: translateY(-1px);
         }
 
-        .result-section {
+        /* 结果卡片 */
+        .result-card {
             background: white;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            border-radius: 14px;
+            padding: 28px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
             display: none;
+            animation: fadeIn 0.3s ease;
         }
 
-        .result-section.visible {
+        .result-card.visible {
             display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* SQL 展示 */
+        .section-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
         }
 
         .sql-block {
             background: #1e1e2e;
-            color: #a6e3a1;
-            padding: 16px;
-            border-radius: 8px;
+            border-radius: 10px;
+            padding: 16px 20px;
             font-family: 'Fira Code', 'Consolas', monospace;
             font-size: 13px;
-            margin-bottom: 20px;
+            color: #a6e3a1;
             overflow-x: auto;
+            margin-bottom: 24px;
+            line-height: 1.6;
         }
 
-        .sql-label {
+        .sql-block .keyword {
+            color: #cba6f7;
+        }
+
+        /* 展示模式切换 */
+        .view-toggle {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .toggle-btn {
+            padding: 6px 14px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            border-radius: 8px;
             font-size: 12px;
-            color: #888;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.15s;
         }
 
+        .toggle-btn.active {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+
+        .toggle-btn:hover:not(.active) {
+            background: #f9fafb;
+        }
+
+        /* 表格 */
         .table-wrapper {
             overflow-x: auto;
-            margin-top: 12px;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         th {
-            background: #f8f9fa;
-            padding: 10px 14px;
+            background: #f9fafb;
+            padding: 11px 16px;
             text-align: left;
             font-weight: 600;
-            color: #333;
-            border-bottom: 2px solid #e0e0e0;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 12px;
         }
 
         td {
-            padding: 10px 14px;
-            border-bottom: 1px solid #f0f0f0;
-            color: #555;
+            padding: 10px 16px;
+            border-bottom: 1px solid #f3f4f6;
+            color: #4b5563;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
         }
 
         tr:hover td {
             background: #f8f9ff;
         }
 
-        .meta {
-            margin-top: 12px;
-            font-size: 12px;
-            color: #999;
+        /* 图表区域 */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-height: 400px;
+            margin: 0 auto;
         }
 
-        .error {
+        .chart-type-selector {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .chart-type-btn {
+            padding: 5px 12px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: #6b7280;
+        }
+
+        .chart-type-btn.active {
+            background: #ecfdf5;
+            color: #059669;
+            border-color: #a7f3d0;
+        }
+
+        /* Meta */
+        .meta {
+            margin-top: 16px;
+            font-size: 12px;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .meta .badge {
+            background: #ecfdf5;
+            color: #059669;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        /* 错误 & 加载 */
+        .error-block {
             background: #fef2f2;
             border: 1px solid #fecaca;
             color: #dc2626;
-            padding: 16px;
-            border-radius: 8px;
+            padding: 16px 20px;
+            border-radius: 10px;
+            font-size: 14px;
         }
 
         .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 48px 0;
+            gap: 14px;
         }
 
-        .loading::after {
-            content: '';
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #4f46e5;
-            border-top-color: transparent;
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #4f46e5;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-left: 8px;
-            vertical-align: middle;
+            animation: spin 0.7s linear infinite;
+        }
+
+        .loading-text {
+            color: #6b7280;
+            font-size: 14px;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* 响应式 */
+        @media (max-width: 640px) {
+            .input-group { flex-direction: column; }
+            .submit-btn { width: 100%; }
+            h1 { font-size: 22px; }
+            body { padding: 24px 16px; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔍 NL2SQL Demo</h1>
-        <p class="subtitle">用自然语言查询数据库，AI 帮你生成 SQL</p>
+        <div class="header">
+            <div class="header-icon">⚡</div>
+            <h1>NL2SQL Demo</h1>
+            <p class="subtitle">用自然语言查询数据库 · AI 自动生成安全 SQL · 智能可视化</p>
+        </div>
 
-        <div class="input-section">
+        <div class="input-card">
             <div class="input-group">
-                <input type="text" id="question" placeholder="输入你的问题，例如：薪资最高的3个人是谁？" />
-                <button id="submit-btn" onclick="submitQuery()">查询</button>
+                <div class="input-wrapper">
+                    <input type="text" id="question" placeholder="输入你的问题，例如：各部门平均薪资是多少？" autocomplete="off" />
+                </div>
+                <button class="submit-btn" id="submit-btn" onclick="submitQuery()">查询</button>
             </div>
             <div class="examples">
-                <span>试试：</span>
-                <button class="example-btn" onclick="fillExample(this)">技术部有多少人？</button>
-                <button class="example-btn" onclick="fillExample(this)">薪资最高的3个人是谁？</button>
-                <button class="example-btn" onclick="fillExample(this)">每个部门的平均薪资是多少？</button>
-                <button class="example-btn" onclick="fillExample(this)">今年的订单总金额</button>
+                <span class="examples-label">试试 →</span>
+                <button class="example-chip" onclick="fillExample(this)">技术部有多少人？</button>
+                <button class="example-chip" onclick="fillExample(this)">薪资最高的3个人</button>
+                <button class="example-chip" onclick="fillExample(this)">各部门平均薪资</button>
+                <button class="example-chip" onclick="fillExample(this)">各状态的订单数量</button>
+                <button class="example-chip" onclick="fillExample(this)">每月订单总金额</button>
             </div>
         </div>
 
-        <div class="result-section" id="result">
-            <!-- 动态内容 -->
-        </div>
+        <div class="result-card" id="result"></div>
     </div>
 
     <script>
         const input = document.getElementById('question');
         const resultDiv = document.getElementById('result');
         const submitBtn = document.getElementById('submit-btn');
+        let currentChart = null;
+        let currentData = null;
 
-        // 回车提交
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') submitQuery();
+            if (e.key === 'Enter' && !submitBtn.disabled) submitQuery();
         });
 
         function fillExample(btn) {
@@ -255,9 +402,13 @@
             const question = input.value.trim();
             if (!question) return;
 
-            // 显示加载状态
-            resultDiv.className = 'result-section visible';
-            resultDiv.innerHTML = '<div class="loading">AI 正在生成 SQL 并查询</div>';
+            resultDiv.className = 'result-card visible';
+            resultDiv.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">AI 正在理解问题并生成 SQL...</div>
+                </div>
+            `;
             submitBtn.disabled = true;
 
             try {
@@ -272,41 +423,225 @@
                     throw new Error(err.detail || '请求失败');
                 }
 
-                const data = await res.json();
-                renderResult(data);
+                currentData = await res.json();
+                renderResult(currentData);
             } catch (e) {
-                resultDiv.innerHTML = `<div class="error">❌ ${e.message}</div>`;
+                resultDiv.innerHTML = `<div class="error-block">❌ ${escapeHtml(e.message)}</div>`;
             } finally {
                 submitBtn.disabled = false;
             }
         }
 
         function renderResult(data) {
+            const canChart = canShowChart(data);
+
             let html = '';
 
-            // SQL 展示
-            html += `<div class="sql-label">生成的 SQL</div>`;
-            html += `<div class="sql-block">${escapeHtml(data.generated_sql)}</div>`;
+            // SQL
+            html += `<div class="section-label">生成的 SQL</div>`;
+            html += `<div class="sql-block">${formatSQL(data.generated_sql)}</div>`;
 
-            // 表格
+            // 视图切换
+            html += `<div class="view-toggle">`;
+            html += `<button class="toggle-btn ${canChart ? '' : 'active'}" onclick="switchView('table')">📋 表格</button>`;
+            if (canChart) {
+                html += `<button class="toggle-btn active" onclick="switchView('chart')">📊 图表</button>`;
+            }
+            html += `</div>`;
+
+            // 图表类型选择（仅图表模式可见）
+            if (canChart) {
+                html += `<div id="chart-types" class="chart-type-selector">`;
+                html += `<button class="chart-type-btn active" onclick="changeChartType('bar')">柱状图</button>`;
+                html += `<button class="chart-type-btn" onclick="changeChartType('pie')">饼图</button>`;
+                html += `<button class="chart-type-btn" onclick="changeChartType('line')">折线图</button>`;
+                html += `<button class="chart-type-btn" onclick="changeChartType('doughnut')">环形图</button>`;
+                html += `</div>`;
+            }
+
+            // 图表容器
+            html += `<div id="chart-view" style="${canChart ? '' : 'display:none'}"><div class="chart-container"><canvas id="resultChart"></canvas></div></div>`;
+
+            // 表格容器
+            html += `<div id="table-view" style="${canChart ? 'display:none' : ''}">`;
             if (data.rows.length > 0) {
                 html += `<div class="table-wrapper"><table>`;
                 html += `<thead><tr>${data.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>`;
                 html += `<tbody>`;
                 for (const row of data.rows) {
-                    html += `<tr>${data.columns.map(c => `<td>${escapeHtml(String(row[c] ?? ''))}</td>`).join('')}</tr>`;
+                    html += `<tr>${data.columns.map(c => `<td>${escapeHtml(String(row[c] ?? '-'))}</td>`).join('')}</tr>`;
                 }
                 html += `</tbody></table></div>`;
-                html += `<div class="meta">共 ${data.row_count} 条结果</div>`;
             } else {
-                html += `<div class="meta">查询成功，但没有匹配的数据。</div>`;
+                html += `<p style="color:#9ca3af;text-align:center;padding:20px;">查询成功，但没有匹配的数据</p>`;
             }
+            html += `</div>`;
+
+            // Meta
+            html += `<div class="meta"><span class="badge">${data.row_count} 条结果</span></div>`;
 
             resultDiv.innerHTML = html;
+
+            // 渲染图表
+            if (canChart) {
+                renderChart(data, 'bar');
+            }
+        }
+
+        function switchView(view) {
+            document.getElementById('chart-view').style.display = view === 'chart' ? '' : 'none';
+            document.getElementById('table-view').style.display = view === 'table' ? '' : 'none';
+            const chartTypes = document.getElementById('chart-types');
+            if (chartTypes) chartTypes.style.display = view === 'chart' ? 'flex' : 'none';
+
+            document.querySelectorAll('.view-toggle .toggle-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', (view === 'table' && i === 0) || (view === 'chart' && i === 1));
+            });
+        }
+
+        function canShowChart(data) {
+            // 至少有 2 列，其中一列是数字，且行数 >= 2
+            if (data.rows.length < 2 || data.columns.length < 2) return false;
+            const numericCol = data.columns.find(c =>
+                data.rows.every(r => !isNaN(parseFloat(r[c])))
+            );
+            return !!numericCol;
+        }
+
+        function getChartData(data) {
+            const cols = data.columns;
+            // 找到数字列作为 values
+            const numericCols = cols.filter(c =>
+                data.rows.every(r => !isNaN(parseFloat(r[c])))
+            );
+            // 非数字列作为 labels
+            const labelCol = cols.find(c => !numericCols.includes(c)) || cols[0];
+            const valueCol = numericCols[0] || cols[1];
+
+            const labels = data.rows.map(r => String(r[labelCol]));
+            const values = data.rows.map(r => parseFloat(r[valueCol]));
+
+            return { labels, values, labelCol, valueCol };
+        }
+
+        const chartColors = [
+            'rgba(79, 70, 229, 0.8)',
+            'rgba(6, 182, 212, 0.8)',
+            'rgba(16, 185, 129, 0.8)',
+            'rgba(245, 158, 11, 0.8)',
+            'rgba(239, 68, 68, 0.8)',
+            'rgba(139, 92, 246, 0.8)',
+            'rgba(236, 72, 153, 0.8)',
+            'rgba(20, 184, 166, 0.8)',
+        ];
+
+        const chartColorsBorder = [
+            'rgba(79, 70, 229, 1)',
+            'rgba(6, 182, 212, 1)',
+            'rgba(16, 185, 129, 1)',
+            'rgba(245, 158, 11, 1)',
+            'rgba(239, 68, 68, 1)',
+            'rgba(139, 92, 246, 1)',
+            'rgba(236, 72, 153, 1)',
+            'rgba(20, 184, 166, 1)',
+        ];
+
+        function renderChart(data, type) {
+            if (currentChart) {
+                currentChart.destroy();
+            }
+
+            const { labels, values, labelCol, valueCol } = getChartData(data);
+            const canvas = document.getElementById('resultChart');
+            if (!canvas) return;
+
+            const isPie = (type === 'pie' || type === 'doughnut');
+
+            const config = {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: valueCol,
+                        data: values,
+                        backgroundColor: isPie
+                            ? labels.map((_, i) => chartColors[i % chartColors.length])
+                            : 'rgba(79, 70, 229, 0.7)',
+                        borderColor: isPie
+                            ? labels.map((_, i) => chartColorsBorder[i % chartColorsBorder.length])
+                            : 'rgba(79, 70, 229, 1)',
+                        borderWidth: isPie ? 2 : 2,
+                        borderRadius: isPie ? 0 : 6,
+                        hoverOffset: isPie ? 8 : 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: isPie,
+                            position: 'bottom',
+                            labels: {
+                                padding: 16,
+                                usePointStyle: true,
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            titleFont: { size: 13 },
+                            bodyFont: { size: 12 },
+                        }
+                    },
+                    scales: isPie ? {} : {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 12 }, color: '#6b7280' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0,0,0,0.04)' },
+                            ticks: { font: { size: 12 }, color: '#6b7280' }
+                        }
+                    },
+                    animation: {
+                        duration: 600,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            };
+
+            currentChart = new Chart(canvas, config);
+        }
+
+        function changeChartType(type) {
+            document.querySelectorAll('.chart-type-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.includes(
+                    type === 'bar' ? '柱状' : type === 'pie' ? '饼图' : type === 'line' ? '折线' : '环形'
+                ));
+            });
+            if (currentData) {
+                renderChart(currentData, type);
+            }
+        }
+
+        function formatSQL(sql) {
+            const keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'ON',
+                            'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'AS', 'AND', 'OR', 'IN',
+                            'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'DISTINCT', 'DESC', 'ASC', 'BETWEEN'];
+            let formatted = escapeHtml(sql);
+            keywords.forEach(kw => {
+                const regex = new RegExp(`\\b${kw}\\b`, 'gi');
+                formatted = formatted.replace(regex, `<span class="keyword">${kw}</span>`);
+            });
+            return formatted;
         }
 
         function escapeHtml(str) {
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
     </script>
 </body>
