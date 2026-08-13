@@ -5,7 +5,7 @@ import io
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from app.llm import generate_sql
+from app.llm import generate_sql, explain_result
 from app.security import validate_sql, SQLSecurityError
 from app.db import execute_sql
 from app.history import save_history, get_history, delete_history, clear_history
@@ -17,6 +17,18 @@ class QueryRequest(BaseModel):
     question: str
     # 多轮对话上下文：前端传入之前的问答记录
     conversation: list[dict] | None = None
+
+
+class ExecuteSQLRequest(BaseModel):
+    sql: str
+    question: str | None = None
+
+
+class ExplainRequest(BaseModel):
+    question: str
+    sql: str
+    columns: list[str]
+    rows: list[dict]
 
 
 class QueryResponse(BaseModel):
@@ -61,6 +73,51 @@ async def query(request: QueryRequest):
         rows=result["rows"],
         row_count=result["row_count"],
     )
+
+
+@router.post("/execute", response_model=QueryResponse)
+async def execute_edited_sql(request: ExecuteSQLRequest):
+    """直接执行用户编辑过的 SQL（仍做安全校验）"""
+    # 1. 安全校验
+    try:
+        sql = validate_sql(request.sql)
+    except SQLSecurityError as e:
+        raise HTTPException(status_code=403, detail=f"SQL 安全校验失败: {str(e)}")
+
+    # 2. 执行 SQL
+    try:
+        result = execute_sql(sql)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"SQL 执行失败: {str(e)}")
+
+    # 3. 保存历史
+    question = request.question or f"[手动执行] {sql[:50]}"
+    save_history(question, sql, result["row_count"])
+
+    # 4. 返回结果
+    return QueryResponse(
+        question=question,
+        generated_sql=sql,
+        columns=result["columns"],
+        rows=result["rows"],
+        row_count=result["row_count"],
+    )
+
+
+@router.post("/explain")
+async def explain(request: ExplainRequest):
+    """AI 解读查询结果"""
+    try:
+        explanation = explain_result(
+            question=request.question,
+            sql=request.sql,
+            columns=request.columns,
+            rows=request.rows,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI 解读失败: {str(e)}")
+
+    return {"explanation": explanation}
 
 
 @router.post("/export/csv")

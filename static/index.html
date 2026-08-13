@@ -253,6 +253,84 @@
 
         .sql-block .keyword { color: #cba6f7; }
 
+        /* SQL 可编辑 */
+        .sql-section { position: relative; margin-bottom: 20px; }
+
+        .sql-editor {
+            background: #1e1e2e;
+            border-radius: 10px;
+            padding: 14px 18px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 13px;
+            color: #a6e3a1;
+            border: 2px solid transparent;
+            outline: none;
+            width: 100%;
+            min-height: 60px;
+            resize: vertical;
+            line-height: 1.6;
+            transition: border-color 0.2s;
+        }
+
+        .sql-editor:focus { border-color: #4f46e5; }
+
+        .sql-editor.modified { border-color: #f59e0b; }
+
+        .sql-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            align-items: center;
+        }
+
+        .sql-actions .run-btn {
+            padding: 6px 16px;
+            background: #059669;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .sql-actions .run-btn:hover { background: #047857; }
+        .sql-actions .run-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+        .sql-actions .hint {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        .sql-actions .hint.modified-hint { color: #f59e0b; }
+
+        /* AI 解读 */
+        .explain-section {
+            background: linear-gradient(135deg, #f0f9ff, #eff6ff);
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .explain-section .explain-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #1d4ed8;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .explain-section .explain-text { font-size: 14px; color: #1e3a5f; line-height: 1.7; }
+
+        .explain-loading { font-size: 13px; color: #6b7280; display: flex; align-items: center; gap: 8px; }
+        .explain-loading .dot-pulse { display: inline-block; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
         /* 工具栏：视图切换 + 导出 */
         .toolbar {
             display: flex;
@@ -516,8 +594,17 @@
             const canChart = canShowChart(data);
             let html = '';
 
-            html += `<div class="section-label">生成的 SQL</div>`;
-            html += `<div class="sql-block">${formatSQL(data.generated_sql)}</div>`;
+            // SQL 可编辑区域
+            html += `<div class="sql-section">`;
+            html += `<div class="section-label">生成的 SQL（可编辑）</div>`;
+            html += `<textarea class="sql-editor" id="sql-editor" spellcheck="false">${escapeHtml(data.generated_sql)}</textarea>`;
+            html += `<div class="sql-actions">`;
+            html += `<button class="run-btn" id="run-edited-btn" onclick="runEditedSQL()">▶ 执行</button>`;
+            html += `<span class="hint" id="sql-hint">可直接编辑 SQL 后点击执行</span>`;
+            html += `</div></div>`;
+
+            // AI 解读区域
+            html += `<div id="explain-area"></div>`;
 
             // 工具栏
             html += `<div class="toolbar">`;
@@ -560,6 +647,12 @@
             resultDiv.innerHTML = html;
 
             if (canChart) renderChart(data, 'bar');
+
+            // 绑定 SQL 编辑器事件
+            setupSQLEditor(data.generated_sql);
+
+            // 自动触发 AI 解读
+            fetchExplanation(data);
         }
 
         // ========== 导出 ==========
@@ -686,6 +779,106 @@
                 formatted = formatted.replace(new RegExp(`\\b${kw}\\b`, 'gi'), `<span class="keyword">${kw}</span>`);
             });
             return formatted;
+        }
+
+        // ========== SQL 可编辑 ==========
+        let originalSQL = '';
+
+        function setupSQLEditor(sql) {
+            originalSQL = sql;
+            const editor = document.getElementById('sql-editor');
+            const hint = document.getElementById('sql-hint');
+            if (!editor) return;
+
+            editor.addEventListener('input', () => {
+                const modified = editor.value.trim() !== originalSQL.trim();
+                editor.classList.toggle('modified', modified);
+                if (modified) {
+                    hint.textContent = '⚠️ SQL 已修改，点击执行查看新结果';
+                    hint.className = 'hint modified-hint';
+                } else {
+                    hint.textContent = '可直接编辑 SQL 后点击执行';
+                    hint.className = 'hint';
+                }
+            });
+
+            // Ctrl+Enter 快捷键执行
+            editor.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    runEditedSQL();
+                }
+            });
+        }
+
+        async function runEditedSQL() {
+            const editor = document.getElementById('sql-editor');
+            const runBtn = document.getElementById('run-edited-btn');
+            if (!editor) return;
+
+            const sql = editor.value.trim();
+            if (!sql) return;
+
+            runBtn.disabled = true;
+            runBtn.textContent = '执行中...';
+
+            try {
+                const res = await fetch('/api/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sql,
+                        question: currentData?.question || null,
+                    }),
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || '执行失败');
+                }
+
+                currentData = await res.json();
+                renderResult(currentData);
+                loadHistory();
+            } catch (e) {
+                alert('❌ ' + e.message);
+            } finally {
+                runBtn.disabled = false;
+                runBtn.textContent = '▶ 执行';
+            }
+        }
+
+        // ========== AI 解读 ==========
+        async function fetchExplanation(data) {
+            const area = document.getElementById('explain-area');
+            if (!area || !data.rows.length) return;
+
+            area.innerHTML = `<div class="explain-loading"><span class="dot-pulse">💡</span> AI 正在分析结果...</div>`;
+
+            try {
+                const res = await fetch('/api/explain', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: data.question,
+                        sql: data.generated_sql,
+                        columns: data.columns,
+                        rows: data.rows,
+                    }),
+                });
+
+                if (!res.ok) throw new Error('解读失败');
+
+                const result = await res.json();
+                area.innerHTML = `
+                    <div class="explain-section">
+                        <div class="explain-header">🤖 AI 解读</div>
+                        <div class="explain-text">${escapeHtml(result.explanation)}</div>
+                    </div>
+                `;
+            } catch (e) {
+                area.innerHTML = '';  // 静默失败，不阻塞主流程
+            }
         }
 
         function escapeHtml(str) { return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }

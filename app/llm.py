@@ -60,3 +60,45 @@ def generate_sql(question: str, conversation_history: list[dict] = None) -> str:
         raise ValueError("无法根据您的问题生成有效的 SQL 查询，请换一种方式描述。")
 
     return sql
+
+
+EXPLAIN_PROMPT = """你是一个数据分析助手。根据以下信息，用简洁的中文给出分析解读：
+
+用户问题：{question}
+执行的 SQL：{sql}
+查询结果（JSON）：{result_preview}
+
+要求：
+1. 先用一句话解释 SQL 做了什么
+2. 再对查询结果给出关键洞察（如趋势、极值、对比等）
+3. 如果数据量少可以做总结，数据量大则挑重点说
+4. 输出控制在 3-5 句话内，不要输出 markdown 格式标记
+"""
+
+
+def explain_result(question: str, sql: str, columns: list[str], rows: list[dict]) -> str:
+    """让 LLM 对查询结果进行自然语言解读"""
+    import json
+
+    # 限制传给 LLM 的结果量（避免 token 超限）
+    preview_rows = rows[:20]
+    result_preview = json.dumps(
+        {"columns": columns, "rows": preview_rows, "total_rows": len(rows)},
+        ensure_ascii=False,
+        default=str,
+    )
+
+    response = client.chat.completions.create(
+        model=settings.OPENAI_MODEL,
+        messages=[
+            {"role": "user", "content": EXPLAIN_PROMPT.format(
+                question=question,
+                sql=sql,
+                result_preview=result_preview,
+            )}
+        ],
+        temperature=0.3,
+        max_tokens=400,
+    )
+
+    return response.choices[0].message.content.strip()
