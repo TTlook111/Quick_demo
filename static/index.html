@@ -412,10 +412,73 @@
             .input-group { flex-direction: column; }
             .submit-btn { width: 100%; }
             .toolbar { flex-direction: column; gap: 8px; align-items: flex-start; }
+
+        /* Toast 通知 */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
+
+        .toast {
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            color: white;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 3s forwards;
+            max-width: 360px;
+            word-break: break-word;
+        }
+
+        .toast.success { background: #059669; }
+        .toast.error { background: #dc2626; }
+        .toast.warning { background: #d97706; }
+        .toast.info { background: #4f46e5; }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes toastOut {
+            from { opacity: 1; }
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+
+        /* 空结果提示 */
+        .empty-result {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+        }
+
+        .empty-result .empty-icon { font-size: 40px; margin-bottom: 12px; }
+        .empty-result .empty-title { font-size: 15px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .empty-result .empty-desc { font-size: 13px; color: #9ca3af; }
+
+        /* 自动修复提示 */
+        .auto-fix-banner {
+            background: #fefce8;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            color: #92400e;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
     </style>
 </head>
 <body>
+    <div class="toast-container" id="toast-container"></div>
     <div class="layout">
         <aside class="sidebar">
             <div class="sidebar-header">
@@ -584,6 +647,7 @@
                 loadHistory();
             } catch (e) {
                 resultDiv.innerHTML = `<div class="error-block">❌ ${escapeHtml(e.message)}</div>`;
+                showToast(e.message, 'error');
             } finally {
                 submitBtn.disabled = false;
             }
@@ -593,6 +657,12 @@
         function renderResult(data) {
             const canChart = canShowChart(data);
             let html = '';
+
+            // 自动修复提示
+            if (data.auto_fixed) {
+                html += `<div class="auto-fix-banner">🔧 原始 SQL 执行失败，AI 已自动修复并重新执行成功</div>`;
+                showToast('SQL 已自动修复并执行成功', 'warning');
+            }
 
             // SQL 可编辑区域
             html += `<div class="sql-section">`;
@@ -605,6 +675,18 @@
 
             // AI 解读区域
             html += `<div id="explain-area"></div>`;
+
+            // 空结果处理
+            if (data.row_count === 0) {
+                html += `<div class="empty-result">
+                    <div class="empty-icon">📭</div>
+                    <div class="empty-title">没有匹配的数据</div>
+                    <div class="empty-desc">试试换一种方式描述，或者调整查询条件</div>
+                </div>`;
+                resultDiv.innerHTML = html;
+                setupSQLEditor(data.generated_sql);
+                return;
+            }
 
             // 工具栏
             html += `<div class="toolbar">`;
@@ -841,7 +923,7 @@
                 renderResult(currentData);
                 loadHistory();
             } catch (e) {
-                alert('❌ ' + e.message);
+                showToast(e.message, 'error');
             } finally {
                 runBtn.disabled = false;
                 runBtn.textContent = '▶ 执行';
@@ -879,6 +961,20 @@
             } catch (e) {
                 area.innerHTML = '';  // 静默失败，不阻塞主流程
             }
+        }
+
+        // ========== Toast 通知 ==========
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            // 3.3 秒后移除（动画 3s + 缓冲）
+            setTimeout(() => {
+                if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, 3300);
         }
 
         function escapeHtml(str) { return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }

@@ -85,6 +85,68 @@ def generate_sql(question: str, conversation_history: list[dict] = None) -> str:
     return sql
 
 
+FIX_SQL_PROMPT = """之前根据用户问题生成的 SQL 执行失败了，请修复。
+
+用户问题：{question}
+原始 SQL：{original_sql}
+错误信息：{error}
+
+数据库 Schema：
+{schema}
+
+规则：
+1. 只生成 SELECT 语句，必须包含 LIMIT
+2. 只输出纯 SQL 语句，不要任何解释或 markdown 标记
+3. 如果确实无法修复，输出：CANNOT_FIX
+"""
+
+
+def fix_sql(question: str, original_sql: str, error: str) -> str:
+    """当 SQL 执行失败时，让 LLM 根据错误信息修复 SQL"""
+    schema = get_schema_info()
+
+    last_error = None
+    for attempt in range(1 + settings.LLM_MAX_RETRIES):
+        try:
+            start = time.time()
+            response = client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=[
+                    {"role": "user", "content": FIX_SQL_PROMPT.format(
+                        question=question,
+                        original_sql=original_sql,
+                        error=error,
+                        schema=schema,
+                    )}
+                ],
+                temperature=0,
+                max_tokens=500,
+            )
+            elapsed = time.time() - start
+            logger.info(f"LLM fix_sql 耗时: {elapsed:.2f}s (attempt {attempt + 1})")
+            break
+        except Exception as e:
+            last_error = e
+            logger.warning(f"LLM fix_sql 调用失败 (attempt {attempt + 1}): {e}")
+            if attempt < settings.LLM_MAX_RETRIES:
+                time.sleep(1)
+    else:
+        raise RuntimeError(f"LLM 服务暂时不可用。({last_error})")
+
+    sql = response.choices[0].message.content.strip()
+
+    # 清理 markdown
+    if sql.startswith("```"):
+        sql = sql.split("\n", 1)[1]
+        sql = sql.rsplit("```", 1)[0]
+        sql = sql.strip()
+
+    if sql == "CANNOT_FIX":
+        return None
+
+    return sql
+
+
 EXPLAIN_PROMPT = """你是一个数据分析助手。根据以下信息，用简洁的中文给出分析解读：
 
 用户问题：{question}

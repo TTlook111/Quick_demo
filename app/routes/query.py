@@ -5,13 +5,16 @@ import io
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from app.llm import generate_sql, explain_result
+import logging
+from app.llm import generate_sql, explain_result, fix_sql
 from app.security import validate_sql, SQLSecurityError
 from app.db import execute_sql
 from app.history import save_history, get_history, delete_history, clear_history
 
 router = APIRouter()
 
+
+logger = logging.getLogger(__name__)
 
 class QueryRequest(BaseModel):
     question: str
@@ -37,6 +40,7 @@ class QueryResponse(BaseModel):
     columns: list[str]
     rows: list[dict]
     row_count: int
+    auto_fixed: bool = False  # 标记是否经过自动修复
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -62,6 +66,27 @@ async def query(request: QueryRequest):
     except Exception as e:
         if isinstance(e, TimeoutError):
             raise HTTPException(status_code=408, detail=str(e))
+
+        # 自动修复：SQL 执行失败时尝试让 LLM 修正
+        logger.info(f"SQL 执行失败，尝试自动修复: {e}")
+        try:
+            fixed_sql = fix_sql(request.question, sql, str(e))
+            if fixed_sql:
+                fixed_sql = validate_sql(fixed_sql)
+                result = execute_sql(fixed_sql)
+                sql = fixed_sql  # 用修复后的 SQL
+                save_history(request.question, sql, result["row_count"])
+                return QueryResponse(
+                    question=request.question,
+                    generated_sql=sql,
+                    columns=result["columns"],
+                    rows=result["rows"],
+                    row_count=result["row_count"],
+                    auto_fixed=True,
+                )
+        except Exception as fix_error:
+            logger.warning(f"自动修复失败: {fix_error}")
+
         raise HTTPException(status_code=500, detail=f"SQL 执行失败: {str(e)}")
 
     # 4. 保存历史
