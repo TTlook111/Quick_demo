@@ -60,6 +60,8 @@ async def query(request: QueryRequest):
     try:
         result = execute_sql(sql)
     except Exception as e:
+        if isinstance(e, TimeoutError):
+            raise HTTPException(status_code=408, detail=str(e))
         raise HTTPException(status_code=500, detail=f"SQL 执行失败: {str(e)}")
 
     # 4. 保存历史
@@ -88,6 +90,8 @@ async def execute_edited_sql(request: ExecuteSQLRequest):
     try:
         result = execute_sql(sql)
     except Exception as e:
+        if isinstance(e, TimeoutError):
+            raise HTTPException(status_code=408, detail=str(e))
         raise HTTPException(status_code=500, detail=f"SQL 执行失败: {str(e)}")
 
     # 3. 保存历史
