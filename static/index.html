@@ -571,6 +571,71 @@
         .copy-sql-btn:hover { background: var(--hover-bg); color: var(--text-primary); }
         .copy-sql-btn.copied { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
 
+        /* 数据源选择器 */
+        .datasource-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .datasource-bar label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .datasource-select {
+            padding: 7px 14px;
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-primary);
+            background: var(--bg-card);
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+            min-width: 160px;
+        }
+
+        .datasource-select:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+
+        .ds-type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .ds-type-badge.sqlite { background: #f0fdf4; color: #15803d; }
+        .ds-type-badge.mysql { background: #eff6ff; color: #1d4ed8; }
+        .ds-type-badge.postgresql { background: #faf5ff; color: #7c3aed; }
+
+        .ds-status {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .ds-status.connected { color: #059669; }
+        .ds-status.error { color: #dc2626; }
+
+        .ds-refresh-btn {
+            font-size: 11px;
+            color: var(--text-muted);
+            background: none;
+            border: 1px solid var(--border-color);
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .ds-refresh-btn:hover { background: var(--hover-bg); color: var(--text-primary); }
+
     </style>
 </head>
 <body>
@@ -599,6 +664,15 @@
                 <div class="context-banner" id="context-banner">
                     <span>💡 多轮对话模式：AI 会参考之前的查询上下文（<span id="context-count">0</span> 轮）</span>
                     <button onclick="clearContext()">清除上下文</button>
+                </div>
+
+                <!-- 数据源选择器 -->
+                <div class="datasource-bar" id="datasource-bar" style="display: none;">
+                    <label>🗄️ 数据源</label>
+                    <select class="datasource-select" id="datasource-select" onchange="onDatasourceChange()"></select>
+                    <span class="ds-type-badge" id="ds-type-badge"></span>
+                    <button class="ds-refresh-btn" onclick="refreshSchema()" title="刷新 Schema">🔄 刷新</button>
+                    <span class="ds-status" id="ds-status"></span>
                 </div>
 
                 <div class="input-card">
@@ -630,10 +704,74 @@
         let currentChart = null;
         let currentData = null;
 
+        // 数据源相关
+        let datasources = [];
+        let currentDatasourceId = null;
+
         // 多轮对话上下文
         let conversationHistory = [];
 
+        // 初始化
+        loadDatasources();
         loadHistory();
+
+        // ========== 数据源管理 ==========
+        async function loadDatasources() {
+            try {
+                const res = await fetch('/api/datasources');
+                datasources = await res.json();
+
+                const bar = document.getElementById('datasource-bar');
+                const select = document.getElementById('datasource-select');
+
+                if (datasources.length > 1) {
+                    bar.style.display = 'flex';
+                }
+
+                select.innerHTML = datasources.map(ds =>
+                    `<option value="${ds.id}">${ds.name}</option>`
+                ).join('');
+
+                currentDatasourceId = datasources[0]?.id || null;
+                updateDatasourceBadge();
+            } catch (e) {
+                console.error('加载数据源失败:', e);
+            }
+        }
+
+        function onDatasourceChange() {
+            const select = document.getElementById('datasource-select');
+            currentDatasourceId = select.value;
+            updateDatasourceBadge();
+            // 切换数据源时清除对话上下文
+            clearContext();
+            showToast(`已切换到: ${datasources.find(d => d.id === currentDatasourceId)?.name}`, 'info');
+        }
+
+        function updateDatasourceBadge() {
+            const badge = document.getElementById('ds-type-badge');
+            const ds = datasources.find(d => d.id === currentDatasourceId);
+            if (!ds) return;
+
+            const typeLabels = { sqlite: 'SQLite', mysql: 'MySQL', postgresql: 'PostgreSQL' };
+            badge.textContent = typeLabels[ds.type] || ds.type;
+            badge.className = `ds-type-badge ${ds.type}`;
+        }
+
+        async function refreshSchema() {
+            if (!currentDatasourceId) return;
+            try {
+                const res = await fetch(`/api/datasources/${currentDatasourceId}/refresh-schema`, { method: 'POST' });
+                if (res.ok) {
+                    showToast('Schema 已刷新', 'success');
+                } else {
+                    const err = await res.json();
+                    showToast(`刷新失败: ${err.detail}`, 'error');
+                }
+            } catch (e) {
+                showToast('刷新请求失败', 'error');
+            }
+        }
 
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !submitBtn.disabled) submitQuery();
@@ -724,7 +862,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         question,
-                        conversation: conversationHistory.length > 0 ? conversationHistory : null
+                        conversation: conversationHistory.length > 0 ? conversationHistory : null,
+                        datasource_id: currentDatasourceId
                     }),
                 });
 
@@ -1008,6 +1147,7 @@
                     body: JSON.stringify({
                         sql,
                         question: currentData?.question || null,
+                        datasource_id: currentDatasourceId,
                     }),
                 });
 

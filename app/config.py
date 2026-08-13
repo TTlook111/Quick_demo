@@ -16,7 +16,7 @@ class Settings:
     OPENAI_BASE_URL: str = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o")
 
-    # 数据库配置
+    # 默认数据库配置（本地 SQLite 用于演示）
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./data/demo.db")
 
     # 安全配置

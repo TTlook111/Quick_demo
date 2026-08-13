@@ -5,6 +5,7 @@
 ## ✨ 功能特性
 
 - 🔤 **自然语言转 SQL** — 输入中文问题，自动生成对应的 SELECT 查询
+- 🗄️ **多数据源支持** — 同时连接 SQLite/MySQL/PostgreSQL，前端一键切换
 - 🔄 **多轮对话** — 支持追问和修改（如"只看技术部"、"按薪资排序"）
 - 🛡️ **SQL 安全校验** — sqlparse 解析 + 黑名单关键词 + 注入防护，只允许 SELECT
 - ✏️ **SQL 可编辑** — 生成的 SQL 可直接修改后重新执行
@@ -41,7 +42,7 @@
 ## 🏗️ 技术架构
 
 ```
-用户输入 → FastAPI → LLM (生成SQL) → sqlparse (安全校验) → SQLite (执行) → 返回结果
+用户输入 → FastAPI → LLM (生成SQL) → sqlparse (安全校验) → DB Engine (执行) → 返回结果
                                                                          ↓
                                                               LLM (AI 解读)
 ```
@@ -49,7 +50,7 @@
 | 层 | 技术选型 | 说明 |
 |----|----------|------|
 | Web 框架 | FastAPI + Uvicorn | 高性能异步，自带 OpenAPI 文档 |
-| 数据库 | SQLite + SQLAlchemy | 轻量零配置，SQLAlchemy Core 执行原始 SQL |
+| 数据库 | SQLite/MySQL/PostgreSQL + SQLAlchemy | 多引擎管理，SQLAlchemy Core 执行原始 SQL |
 | LLM | OpenAI SDK | 兼容所有 OpenAI 协议的模型（通义千问、DeepSeek 等） |
 | SQL 安全 | sqlparse | 语法解析 + 类型检查 + 黑名单关键词 |
 | 前端 | 原生 HTML/CSS/JS | 零框架零构建，单文件 SPA |
@@ -246,15 +247,39 @@ OPENAI_MODEL=gpt-4o
 
 ### 切换数据库
 
+**方式一：单数据源**
+
 ```env
+# SQLite（默认）
+DATABASE_URL=sqlite:///./data/demo.db
+
 # MySQL
-DATABASE_URL=mysql+pymysql://user:pass@localhost/mydb
+DATABASE_URL=mysql+pymysql://user:password@localhost:3306/mydb
 
 # PostgreSQL
-DATABASE_URL=postgresql://user:pass@localhost/mydb
+DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/mydb
 ```
 
-> ⚠️ 使用 MySQL/PostgreSQL 需额外安装对应驱动（`pymysql` / `psycopg2`）。
+**方式二：多数据源（前端可切换）**
+
+在 `.env` 中配置 `DATASOURCES` 环境变量（JSON 数组格式）：
+
+```env
+DATASOURCES=[{"id":"local","name":"本地SQLite","url":"sqlite:///./data/demo.db","type":"sqlite"},{"id":"mysql_prod","name":"MySQL生产库","url":"mysql+pymysql://user:pass@host:3306/dbname","type":"mysql"},{"id":"pg_analytics","name":"PG分析库","url":"postgresql+psycopg2://user:pass@host:5432/dbname","type":"postgresql"}]
+```
+
+配置后前端会显示数据源下拉选择器，可以在不同数据库之间自由切换查询。
+
+### 新增 API 端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/datasources` | 获取所有可用数据源列表 |
+| POST | `/api/datasources/{id}/test` | 测试数据源连接 |
+| POST | `/api/datasources/{id}/refresh-schema` | 刷新 Schema 缓存 |
+| GET | `/api/datasources/{id}/schema` | 获取数据源表结构 |
+
+> 💡 驱动已内置在依赖中（`pymysql` + `psycopg2-binary`），无需额外安装。
 
 ## 📝 License
 

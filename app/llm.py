@@ -1,10 +1,10 @@
-"""LLM 调用 - 根据用户问题生成 SQL（支持多轮对话上下文）"""
+"""LLM 调用 - 根据用户问题生成 SQL（支持多轮对话上下文 + 多数据源）"""
 
 import time
 import logging
 from openai import OpenAI
 from app.config import settings
-from app.db import get_schema_info
+from app.db import get_schema_info, get_db_type
 
 client = OpenAI(
     api_key=settings.OPENAI_API_KEY,
@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """你是一个 SQL 生成助手。根据用户的自然语言问题和数据库 Schema，生成安全的 SQL 查询语句。
 
+数据库类型：{db_type}
+
 规则：
 1. 只生成 SELECT 语句，禁止任何修改数据的操作
 2. 必须包含 LIMIT（默认 LIMIT 100）
@@ -22,22 +24,31 @@ SYSTEM_PROMPT = """你是一个 SQL 生成助手。根据用户的自然语言�
 4. 只输出纯 SQL 语句，不要任何解释、markdown 格式或代码块标记
 5. 如果用户问题无法转换为 SQL，输出：CANNOT_GENERATE
 6. 如果用户的问题是对之前查询的追问或修改（如"只看技术部"、"按薪资排序"、"换成降序"），请基于之前的 SQL 进行调整
+7. 注意根据数据库类型使用正确的 SQL 方言（如 MySQL 用 LIMIT，PostgreSQL 支持 ILIKE 等）
 
 数据库 Schema：
 {schema}
 """
 
 
-def generate_sql(question: str, conversation_history: list[dict] = None) -> str:
+def generate_sql(question: str, conversation_history: list[dict] = None, datasource_id: str = None) -> str:
     """根据用户问题生成 SQL，支持多轮对话上下文"""
     # 问题长度校验
     if len(question) > settings.MAX_QUESTION_LENGTH:
         raise ValueError(f"问题过长（最大 {settings.MAX_QUESTION_LENGTH} 字），请精简描述。")
 
-    schema = get_schema_info()
+    schema = get_schema_info(datasource_id)
+    db_type = get_db_type(datasource_id)
+
+    # 数据库类型的友好名称
+    db_type_display = {
+        "sqlite": "SQLite",
+        "mysql": "MySQL",
+        "postgresql": "PostgreSQL",
+    }.get(db_type, db_type)
 
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT.format(schema=schema)},
+        {"role": "system", "content": SYSTEM_PROMPT.format(schema=schema, db_type=db_type_display)},
     ]
 
     # 加入历史对话上下文
@@ -87,6 +98,7 @@ def generate_sql(question: str, conversation_history: list[dict] = None) -> str:
 
 FIX_SQL_PROMPT = """之前根据用户问题生成的 SQL 执行失败了，请修复。
 
+数据库类型：{db_type}
 用户问题：{question}
 原始 SQL：{original_sql}
 错误信息：{error}
@@ -97,13 +109,21 @@ FIX_SQL_PROMPT = """之前根据用户问题生成的 SQL 执行失败了，请�
 规则：
 1. 只生成 SELECT 语句，必须包含 LIMIT
 2. 只输出纯 SQL 语句，不要任何解释或 markdown 标记
-3. 如果确实无法修复，输出：CANNOT_FIX
+3. 注意根据数据库类型使用正确的 SQL 方言
+4. 如果确实无法修复，输出：CANNOT_FIX
 """
 
 
-def fix_sql(question: str, original_sql: str, error: str) -> str:
+def fix_sql(question: str, original_sql: str, error: str, datasource_id: str = None) -> str:
     """当 SQL 执行失败时，让 LLM 根据错误信息修复 SQL"""
-    schema = get_schema_info()
+    schema = get_schema_info(datasource_id)
+    db_type = get_db_type(datasource_id)
+
+    db_type_display = {
+        "sqlite": "SQLite",
+        "mysql": "MySQL",
+        "postgresql": "PostgreSQL",
+    }.get(db_type, db_type)
 
     last_error = None
     for attempt in range(1 + settings.LLM_MAX_RETRIES):
@@ -117,6 +137,7 @@ def fix_sql(question: str, original_sql: str, error: str) -> str:
                         original_sql=original_sql,
                         error=error,
                         schema=schema,
+                        db_type=db_type_display,
                     )}
                 ],
                 temperature=0,
