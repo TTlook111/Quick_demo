@@ -1,53 +1,261 @@
-# NL2SQL Demo
+# 🗣️ NL2SQL Demo
 
-通过自然语言生成安全 SQL 并执行，返回查询结果。
+> 用自然语言查询数据库 — 输入问题，自动生成安全 SQL 并执行，返回结果 + AI 解读。
 
-## 技术栈
+## ✨ 功能特性
 
-- **后端**: FastAPI + SQLAlchemy
-- **LLM**: OpenAI API (兼容任何 OpenAI 格式的 API)
-- **数据库**: SQLite (demo) / 可切换 MySQL、PostgreSQL
-- **安全**: sqlparse 白名单校验 + 只读约束
+- 🔤 **自然语言转 SQL** — 输入中文问题，自动生成对应的 SELECT 查询
+- 🔄 **多轮对话** — 支持追问和修改（如"只看技术部"、"按薪资排序"）
+- 🛡️ **SQL 安全校验** — sqlparse 解析 + 黑名单关键词 + 注入防护，只允许 SELECT
+- ✏️ **SQL 可编辑** — 生成的 SQL 可直接修改后重新执行
+- 🤖 **AI 结果解读** — 查询完成后 LLM 自动分析数据，给出关键洞察
+- 📊 **数据可视化** — 表格 + Chart.js 图表（柱状图/折线图/饼图）自由切换
+- 📥 **CSV 导出** — 一键下载查询结果
+- 📜 **查询历史** — 侧栏记录所有查询，点击可回顾
 
-## 快速开始
+## 🖼️ 界面预览
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  [历史记录]  │         NL2SQL Demo                       │
+│              │                                           │
+│  · 技术部..  │  ┌─────────────────────────────────┐      │
+│  · 平均薪..  │  │ 💬 查询所有薪资超过2万的员工     │      │
+│  · 订单统..  │  └─────────────────────────────────┘      │
+│              │                                           │
+│              │  [生成的 SQL（可编辑）]                     │
+│              │  SELECT * FROM employees WHERE ...         │
+│              │  [▶ 执行]                                  │
+│              │                                           │
+│              │  🤖 AI 解读: 共有6名员工薪资超过...        │
+│              │                                           │
+│              │  [表格] [图表]          [导出CSV]          │
+│              │  ┌──────┬──────┬───────────────┐          │
+│              │  │ 姓名 │ 部门 │ 薪资          │          │
+│              │  ├──────┼──────┼───────────────┤          │
+│              │  │ 张三 │ 技术 │ 35,000        │          │
+│              │  │ ...  │ ...  │ ...           │          │
+└─────────────────────────────────────────────────────────┘
+```
+
+## 🏗️ 技术架构
+
+```
+用户输入 → FastAPI → LLM (生成SQL) → sqlparse (安全校验) → SQLite (执行) → 返回结果
+                                                                         ↓
+                                                              LLM (AI 解读)
+```
+
+| 层 | 技术选型 | 说明 |
+|----|----------|------|
+| Web 框架 | FastAPI + Uvicorn | 高性能异步，自带 OpenAPI 文档 |
+| 数据库 | SQLite + SQLAlchemy | 轻量零配置，SQLAlchemy Core 执行原始 SQL |
+| LLM | OpenAI SDK | 兼容所有 OpenAI 协议的模型（通义千问、DeepSeek 等） |
+| SQL 安全 | sqlparse | 语法解析 + 类型检查 + 黑名单关键词 |
+| 前端 | 原生 HTML/CSS/JS | 零框架零构建，单文件 SPA |
+| 图表 | Chart.js 4.x | 柱状图、折线图、饼图 |
+| 包管理 | uv | 极速 Python 包管理器 |
+
+## 📁 项目结构
+
+```
+nl2sql-demo/
+├── main.py                  # 应用入口，FastAPI 实例配置
+├── app/
+│   ├── __init__.py
+│   ├── config.py            # 环境变量配置（.env 加载）
+│   ├── db.py                # 数据库连接、Schema 提取、SQL 执行
+│   ├── llm.py               # LLM 调用（SQL 生成 + 结果解读）
+│   ├── security.py          # SQL 安全校验（白名单 + 黑名单）
+│   ├── history.py           # 查询历史 CRUD（独立 SQLite）
+│   └── routes/
+│       ├── __init__.py
+│       └── query.py         # API 路由（查询/执行/解读/导出/历史）
+├── static/
+│   └── index.html           # 前端页面（单文件 SPA）
+├── scripts/
+│   └── init_db.py           # 初始化示例数据库脚本
+├── data/
+│   ├── demo.db              # 业务数据（员工/部门/订单）
+│   └── history.db           # 查询历史记录
+├── pyproject.toml           # 项目依赖声明
+└── uv.lock                  # 依赖锁定文件
+```
+
+## 🚀 快速开始
+
+### 环境要求
+
+- Python ≥ 3.13
+- [uv](https://docs.astral.sh/uv/) 包管理器
+
+### 安装 & 运行
 
 ```bash
-# 1. 安装依赖
+# 1. 克隆项目
+git clone git@github.com:TTlook111/Quick_demo.git
+cd Quick_demo
+
+# 2. 安装依赖
 uv sync
 
-# 2. 配置环境变量
+# 3. 配置环境变量
 cp .env.example .env
-# 编辑 .env 填入你的 API Key
+# 编辑 .env 填入你的 LLM API Key
+```
 
-# 3. 初始化示例数据库
+`.env` 文件内容：
+
+```env
+# LLM 配置（示例为通义千问 DashScope）
+OPENAI_API_KEY=sk-xxxxxxxxxxxx
+OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+OPENAI_MODEL=qwen-plus
+
+# 数据库（默认 SQLite，可换 MySQL/PostgreSQL）
+DATABASE_URL=sqlite:///./data/demo.db
+
+# 安全限制
+MAX_ROWS=100
+QUERY_TIMEOUT=10
+```
+
+```bash
+# 4. 初始化示例数据库
 uv run python scripts/init_db.py
 
-# 4. 启动服务
+# 5. 启动服务
 uv run python main.py
 ```
 
-访问 http://localhost:8000/docs 查看 API 文档。
+浏览器打开 **http://localhost:8000** 即可使用。
 
-## API 使用
+> 💡 开发模式（热重载）：`uv run uvicorn main:app --reload --port 8000`
+
+## 📡 API 文档
+
+启动后访问 http://localhost:8000/docs 查看 Swagger 文档。
+
+### 核心端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/query` | 自然语言查询（输入问题 → 返回 SQL + 结果） |
+| POST | `/api/execute` | 直接执行 SQL（用户编辑后的 SQL） |
+| POST | `/api/explain` | AI 解读查询结果 |
+| POST | `/api/export/csv` | 导出查询结果为 CSV |
+| GET | `/api/history` | 获取查询历史 |
+| DELETE | `/api/history/{id}` | 删除单条历史 |
+| DELETE | `/api/history` | 清空所有历史 |
+
+### 请求示例
 
 ```bash
+# 自然语言查询
 curl -X POST http://localhost:8000/api/query \
   -H "Content-Type: application/json" \
   -d '{"question": "技术部有多少人？"}'
+
+# 带多轮上下文
+curl -X POST http://localhost:8000/api/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "按薪资降序排列",
+    "conversation": [
+      {"question": "技术部有哪些人", "sql": "SELECT * FROM employees WHERE department = '\''技术部'\'' LIMIT 100"}
+    ]
+  }'
+
+# 执行编辑后的 SQL
+curl -X POST http://localhost:8000/api/execute \
+  -H "Content-Type: application/json" \
+  -d '{"sql": "SELECT department, AVG(salary) as avg_salary FROM employees GROUP BY department LIMIT 100"}'
 ```
 
-## 项目结构
+## 🛡️ 安全机制
 
+| 防护层 | 实现 |
+|--------|------|
+| LLM Prompt 约束 | 指令限制只生成 SELECT，禁止修改操作 |
+| sqlparse 解析 | 验证 SQL 语法树类型必须为 SELECT |
+| 关键词黑名单 | 拦截 INSERT/UPDATE/DELETE/DROP/ALTER/UNION 等 |
+| 注释检测 | 禁止 `--` 和 `/*` 防止注释注入 |
+| 单语句限制 | 只允许执行单条 SQL |
+| 行数限制 | `fetchmany(MAX_ROWS)` 防止大量数据拖垮内存 |
+
+## 🗄️ 示例数据
+
+初始化脚本创建 3 张表：
+
+**employees** (员工表 - 10 条)
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER | 主键 |
+| name | TEXT | 姓名 |
+| department | TEXT | 部门 |
+| position | TEXT | 职位 |
+| salary | REAL | 薪资 |
+| hire_date | TEXT | 入职日期 |
+
+**departments** (部门表 - 4 条)
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER | 主键 |
+| name | TEXT | 部门名称 |
+| manager | TEXT | 部门经理 |
+| budget | REAL | 预算 |
+
+**orders** (订单表 - 8 条)
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER | 主键 |
+| customer_name | TEXT | 客户名 |
+| product | TEXT | 产品 |
+| amount | REAL | 金额 |
+| quantity | INTEGER | 数量 |
+| order_date | TEXT | 下单日期 |
+| status | TEXT | 状态 |
+
+### 示例问题
+
+- "技术部有多少人？"
+- "薪资最高的前5名员工"
+- "每个部门的平均薪资是多少？"
+- "已完成的订单总金额"
+- "哪个客户下单最多？"
+
+## 🔧 自定义配置
+
+### 切换 LLM 模型
+
+修改 `.env` 中的 `OPENAI_BASE_URL` 和 `OPENAI_MODEL` 即可适配不同模型：
+
+```env
+# 通义千问
+OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+OPENAI_MODEL=qwen-plus
+
+# DeepSeek
+OPENAI_BASE_URL=https://api.deepseek.com/v1
+OPENAI_MODEL=deepseek-chat
+
+# OpenAI 官方
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4o
 ```
-├── main.py              # FastAPI 入口
-├── app/
-│   ├── config.py        # 配置管理
-│   ├── db.py            # 数据库连接 + Schema 获取
-│   ├── llm.py           # LLM 调用生成 SQL
-│   ├── security.py      # SQL 安全校验
-│   └── routes/
-│       └── query.py     # 查询接口
-├── scripts/
-│   └── init_db.py       # 初始化示例数据库
-└── .env.example         # 环境变量模板
+
+### 切换数据库
+
+```env
+# MySQL
+DATABASE_URL=mysql+pymysql://user:pass@localhost/mydb
+
+# PostgreSQL
+DATABASE_URL=postgresql://user:pass@localhost/mydb
 ```
+
+> ⚠️ 使用 MySQL/PostgreSQL 需额外安装对应驱动（`pymysql` / `psycopg2`）。
+
+## 📝 License
+
+MIT
