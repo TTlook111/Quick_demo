@@ -1,26 +1,28 @@
-# Python
+# 环境变量（含 API Key）
+.env
+
+# 数据库文件
+data/*.db
+
+# Python 缓存
 __pycache__/
 *.py[cod]
-*.egg-info/
-dist/
-.venv/
+*$py.class
+*.pyo
 
-# uv
-uv.lock
+# 虚拟环境
+.venv/
+venv/
 
 # IDE
 .idea/
 .vscode/
-
-# Environment
-.env
-
-# Database files
-data/
-
-# Database
-*.db
+*.swp
+*.swo
 
 # OS
 .DS_Store
 Thumbs.db
+
+# uv
+.python-version

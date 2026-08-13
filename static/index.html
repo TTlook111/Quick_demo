@@ -7,10 +7,46 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-body: #f5f7fa;
+            --bg-card: white;
+            --bg-sidebar: white;
+            --border-color: #e5e7eb;
+            --border-light: #f3f4f6;
+            --text-primary: #1a1a2e;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+            --sql-bg: #1e1e2e;
+            --sql-text: #a6e3a1;
+            --input-border: #e5e7eb;
+            --hover-bg: #f9fafb;
+            --chip-bg: #f0f0ff;
+            --chip-border: #e0e0ff;
+            --chip-text: #4f46e5;
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #0f1117;
+            --bg-card: #1a1d2e;
+            --bg-sidebar: #141620;
+            --border-color: #2a2d3e;
+            --border-light: #22253a;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --sql-bg: #0d1117;
+            --sql-text: #7ee787;
+            --input-border: #2a2d3e;
+            --hover-bg: #1e2235;
+            --chip-bg: #1e1b4b;
+            --chip-border: #312e81;
+            --chip-text: #a5b4fc;
+        }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
-            background: #f5f7fa;
+            background: var(--bg-body);
+            color: var(--text-primary);
             min-height: 100vh;
         }
 
@@ -19,8 +55,8 @@
         /* 侧边栏 */
         .sidebar {
             width: 280px;
-            background: white;
-            border-right: 1px solid #e5e7eb;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
         }
@@ -30,13 +66,13 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid #f3f4f6;
+            border-bottom: 1px solid var(--border-light);
         }
 
         .sidebar-header h3 {
             font-size: 13px;
             font-weight: 600;
-            color: #374151;
+            color: var(--text-primary);
             display: flex;
             align-items: center;
             gap: 6px;
@@ -44,7 +80,7 @@
 
         .clear-btn {
             font-size: 11px;
-            color: #9ca3af;
+            color: var(--text-muted);
             background: none;
             border: none;
             cursor: pointer;
@@ -65,11 +101,11 @@
             transition: background 0.15s;
         }
 
-        .history-item:hover { background: #f9fafb; }
+        .history-item:hover { background: var(--hover-bg); }
 
         .history-item .question {
             font-size: 13px;
-            color: #374151;
+            color: var(--text-primary);
             line-height: 1.4;
             display: -webkit-box;
             -webkit-line-clamp: 2;
@@ -77,12 +113,12 @@
             overflow: hidden;
         }
 
-        .history-item .time { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+        .history-item .time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
         .history-item .row-count {
             font-size: 10px;
-            color: #6b7280;
-            background: #f3f4f6;
+            color: var(--text-secondary);
+            background: var(--border-light);
             padding: 1px 6px;
             border-radius: 8px;
             display: inline-block;
@@ -109,7 +145,7 @@
         .history-item:hover .delete-btn { display: flex; }
         .history-item .delete-btn:hover { background: #fef2f2; color: #ef4444; }
 
-        .history-empty { padding: 40px 20px; text-align: center; color: #9ca3af; font-size: 13px; }
+        .history-empty { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
         /* 主区域 */
         .main { flex: 1; padding: 40px 24px; overflow-y: auto; }
@@ -130,8 +166,8 @@
             box-shadow: 0 4px 16px rgba(79, 70, 229, 0.25);
         }
 
-        h1 { font-size: 26px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
-        .subtitle { color: #666; font-size: 14px; }
+        h1 { font-size: 26px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+        .subtitle { color: var(--text-secondary); font-size: 14px; }
 
         /* 对话上下文提示 */
         .context-banner {
@@ -164,7 +200,7 @@
 
         /* 输入卡片 */
         .input-card {
-            background: white;
+            background: var(--bg-card);
             border-radius: 14px;
             padding: 22px;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
@@ -177,15 +213,16 @@
         input[type="text"] {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid #e5e7eb;
+            border: 2px solid var(--input-border);
             border-radius: 10px;
             font-size: 14px;
-            color: #1a1a2e;
+            color: var(--text-primary);
+            background: var(--bg-card);
             transition: all 0.2s;
             outline: none;
         }
 
-        input[type="text"]::placeholder { color: #9ca3af; }
+        input[type="text"]::placeholder { color: var(--text-muted); }
         input[type="text"]:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
 
         .submit-btn {
@@ -205,13 +242,13 @@
         .submit-btn:disabled { background: #9ca3af; cursor: not-allowed; transform: none; box-shadow: none; }
 
         .examples { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-        .examples-label { font-size: 12px; color: #9ca3af; }
+        .examples-label { font-size: 12px; color: var(--text-muted); }
 
         .example-chip {
             padding: 5px 12px;
-            background: #f0f0ff;
-            color: #4f46e5;
-            border: 1px solid #e0e0ff;
+            background: var(--chip-bg);
+            color: var(--chip-text);
+            border: 1px solid var(--chip-border);
             border-radius: 16px;
             font-size: 12px;
             cursor: pointer;
@@ -222,7 +259,7 @@
 
         /* 结果卡片 */
         .result-card {
-            background: white;
+            background: var(--bg-card);
             border-radius: 14px;
             padding: 24px;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
@@ -237,7 +274,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .section-label { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .section-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
 
         .sql-block {
             background: #1e1e2e;
@@ -257,12 +294,12 @@
         .sql-section { position: relative; margin-bottom: 20px; }
 
         .sql-editor {
-            background: #1e1e2e;
+            background: var(--sql-bg);
             border-radius: 10px;
             padding: 14px 18px;
             font-family: 'Fira Code', 'Consolas', monospace;
             font-size: 13px;
-            color: #a6e3a1;
+            color: var(--sql-text);
             border: 2px solid transparent;
             outline: none;
             width: 100%;
@@ -475,6 +512,65 @@
             gap: 6px;
         }
 
+
+        /* 主题切换按钮 */
+        .theme-toggle {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 1000;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .theme-toggle:hover { transform: scale(1.1); }
+
+        /* 可排序表头 */
+        .data-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 20px;
+        }
+
+        .data-table th.sortable:hover { background: var(--hover-bg); }
+
+        .data-table th.sortable::after {
+            content: '⇅';
+            position: absolute;
+            right: 6px;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .data-table th.sortable.asc::after { content: '↑'; color: #4f46e5; }
+        .data-table th.sortable.desc::after { content: '↓'; color: #4f46e5; }
+
+        /* 复制 SQL 按钮 */
+        .copy-sql-btn {
+            padding: 5px 12px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .copy-sql-btn:hover { background: var(--hover-bg); color: var(--text-primary); }
+        .copy-sql-btn.copied { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+
     </style>
 </head>
 <body>
@@ -493,7 +589,8 @@
         <main class="main">
             <div class="container">
                 <div class="header">
-                    <div class="header-icon">⚡</div>
+                    <div class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</div>
+        <div class="header-icon">⚡</div>
                     <h1>NL2SQL Demo</h1>
                     <p class="subtitle">用自然语言查询数据库 · AI 自动生成安全 SQL · 智能可视化</p>
                 </div>
@@ -669,7 +766,7 @@
             html += `<div class="section-label">生成的 SQL（可编辑）</div>`;
             html += `<textarea class="sql-editor" id="sql-editor" spellcheck="false">${escapeHtml(data.generated_sql)}</textarea>`;
             html += `<div class="sql-actions">`;
-            html += `<button class="run-btn" id="run-edited-btn" onclick="runEditedSQL()">▶ 执行</button>`;
+            html += `<button class="run-btn" id="run-edited-btn" onclick="runEditedSQL()">▶ 执行</button><button class="copy-sql-btn" id="copy-sql-btn" onclick="copySQL()">📋 复制</button>`;
             html += `<span class="hint" id="sql-hint">可直接编辑 SQL 后点击执行</span>`;
             html += `</div></div>`;
 
@@ -714,7 +811,7 @@
             html += `<div id="table-view" style="${canChart ? 'display:none' : ''}">`;
             if (data.rows.length > 0) {
                 html += `<div class="table-wrapper"><table>`;
-                html += `<thead><tr>${data.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>`;
+                html += `<thead><tr>${data.columns.map(c => `<th class="sortable" onclick="sortTable('${escapeAttr(c)}')">${escapeHtml(c)}</th>`).join('')}</tr></thead>`;
                 html += `<tbody>`;
                 for (const row of data.rows) {
                     html += `<tr>${data.columns.map(c => `<td>${escapeHtml(String(row[c] ?? '-'))}</td>`).join('')}</tr>`;
@@ -975,6 +1072,101 @@
             setTimeout(() => {
                 if (toast.parentNode) toast.parentNode.removeChild(toast);
             }, 3300);
+        }
+
+
+        // ========== 暗色模式 ==========
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+
+            const toggle = document.querySelector('.theme-toggle');
+            toggle.textContent = next === 'dark' ? '☀️' : '🌙';
+        }
+
+        // 启动时恢复主题
+        (function() {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                setTimeout(() => {
+                    const toggle = document.querySelector('.theme-toggle');
+                    if (toggle) toggle.textContent = '☀️';
+                }, 0);
+            }
+        })();
+
+        // ========== 复制 SQL ==========
+        function copySQL() {
+            const editor = document.getElementById('sql-editor');
+            if (!editor) return;
+
+            navigator.clipboard.writeText(editor.value).then(() => {
+                const btn = document.getElementById('copy-sql-btn');
+                btn.textContent = '✅ 已复制';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = '📋 复制';
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(() => {
+                showToast('复制失败', 'error');
+            });
+        }
+
+        // ========== 表格排序 ==========
+        let sortState = { column: null, direction: null };
+
+        function sortTable(column) {
+            if (!currentData || !currentData.rows.length) return;
+
+            // 切换排序方向
+            if (sortState.column === column) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.column = column;
+                sortState.direction = 'asc';
+            }
+
+            // 排序
+            const sorted = [...currentData.rows].sort((a, b) => {
+                let valA = a[column];
+                let valB = b[column];
+
+                // 数字比较
+                if (!isNaN(valA) && !isNaN(valB)) {
+                    valA = Number(valA);
+                    valB = Number(valB);
+                } else {
+                    valA = String(valA || '');
+                    valB = String(valB || '');
+                }
+
+                if (valA < valB) return sortState.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return sortState.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            // 重新渲染表格体
+            const tbody = document.querySelector('.data-table tbody');
+            if (!tbody) return;
+
+            tbody.innerHTML = sorted.map(row =>
+                `<tr>${currentData.columns.map(c => `<td>${escapeHtml(String(row[c] ?? ''))}</td>`).join('')}</tr>`
+            ).join('');
+
+            // 更新表头样式
+            document.querySelectorAll('.data-table th.sortable').forEach(th => {
+                th.classList.remove('asc', 'desc');
+                if (th.textContent === column) {
+                    th.classList.add(sortState.direction);
+                }
+            });
+
+            showToast(`按 ${column} ${sortState.direction === 'asc' ? '升序' : '降序'} 排列`, 'info');
         }
 
         function escapeHtml(str) { return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
