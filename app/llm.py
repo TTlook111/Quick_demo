@@ -1,5 +1,7 @@
 """LLM 调用 - 根据用户问题生成 SQL（支持多轮对话上下文）"""
 
+import time
+import logging
 from openai import OpenAI
 from app.config import settings
 from app.db import get_schema_info
@@ -8,6 +10,8 @@ client = OpenAI(
     api_key=settings.OPENAI_API_KEY,
     base_url=settings.OPENAI_BASE_URL,
 )
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """你是一个 SQL 生成助手。根据用户的自然语言问题和数据库 Schema，生成安全的 SQL 查询语句。
 
@@ -26,6 +30,10 @@ SYSTEM_PROMPT = """你是一个 SQL 生成助手。根据用户的自然语言�
 
 def generate_sql(question: str, conversation_history: list[dict] = None) -> str:
     """根据用户问题生成 SQL，支持多轮对话上下文"""
+    # 问题长度校验
+    if len(question) > settings.MAX_QUESTION_LENGTH:
+        raise ValueError(f"问题过长（最大 {settings.MAX_QUESTION_LENGTH} 字），请精简描述。")
+
     schema = get_schema_info()
 
     messages = [
@@ -41,12 +49,27 @@ def generate_sql(question: str, conversation_history: list[dict] = None) -> str:
     # 当前问题
     messages.append({"role": "user", "content": question})
 
-    response = client.chat.completions.create(
-        model=settings.OPENAI_MODEL,
-        messages=messages,
-        temperature=0,
-        max_tokens=500,
-    )
+    # 带重试的 LLM 调用
+    last_error = None
+    for attempt in range(1 + settings.LLM_MAX_RETRIES):
+        try:
+            start = time.time()
+            response = client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=messages,
+                temperature=0,
+                max_tokens=500,
+            )
+            elapsed = time.time() - start
+            logger.info(f"LLM generate_sql 耗时: {elapsed:.2f}s (attempt {attempt + 1})")
+            break
+        except Exception as e:
+            last_error = e
+            logger.warning(f"LLM 调用失败 (attempt {attempt + 1}): {e}")
+            if attempt < settings.LLM_MAX_RETRIES:
+                time.sleep(1)  # 等 1 秒后重试
+    else:
+        raise RuntimeError(f"LLM 服务暂时不可用，请稍后重试。({last_error})")
 
     sql = response.choices[0].message.content.strip()
 
@@ -88,17 +111,31 @@ def explain_result(question: str, sql: str, columns: list[str], rows: list[dict]
         default=str,
     )
 
-    response = client.chat.completions.create(
-        model=settings.OPENAI_MODEL,
-        messages=[
-            {"role": "user", "content": EXPLAIN_PROMPT.format(
-                question=question,
-                sql=sql,
-                result_preview=result_preview,
-            )}
-        ],
-        temperature=0.3,
-        max_tokens=400,
-    )
+    last_error = None
+    for attempt in range(1 + settings.LLM_MAX_RETRIES):
+        try:
+            start = time.time()
+            response = client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=[
+                    {"role": "user", "content": EXPLAIN_PROMPT.format(
+                        question=question,
+                        sql=sql,
+                        result_preview=result_preview,
+                    )}
+                ],
+                temperature=0.3,
+                max_tokens=400,
+            )
+            elapsed = time.time() - start
+            logger.info(f"LLM explain_result 耗时: {elapsed:.2f}s (attempt {attempt + 1})")
+            break
+        except Exception as e:
+            last_error = e
+            logger.warning(f"LLM explain 调用失败 (attempt {attempt + 1}): {e}")
+            if attempt < settings.LLM_MAX_RETRIES:
+                time.sleep(1)
+    else:
+        raise RuntimeError(f"AI 解读服务暂时不可用。({last_error})")
 
     return response.choices[0].message.content.strip()

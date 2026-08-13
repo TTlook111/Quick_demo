@@ -1,10 +1,14 @@
 """NL2SQL Demo - FastAPI 入口"""
 
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.routes.query import router as query_router
+
+# 日志配置
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 app = FastAPI(
     title="NL2SQL Demo",
