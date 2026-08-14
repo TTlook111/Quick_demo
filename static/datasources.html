@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据源管理 - NL2SQL Demo</title>
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/datasources.css">
+</head>
+<body>
+    <div class="toast-container" id="toast-container"></div>
+    <div class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌙</div>
+
+    <main class="ds-page">
+        <div class="container">
+            <div class="ds-page-header">
+                <a class="ds-back-btn" href="/">← 返回聊天</a>
+                <h1>🗄️ 数据源管理</h1>
+                <p class="subtitle">管理数据库连接 · 测试连接 · 切换当前对话使用的数据源</p>
+            </div>
+
+            <!-- 已配置数据源列表 -->
+            <section class="ds-card">
+                <h2 class="ds-card-title">已配置的数据源</h2>
+                <div class="ds-list" id="ds-list"></div>
+            </section>
+
+            <!-- 添加新数据源 -->
+            <section class="ds-card">
+                <h2 class="ds-card-title">➕ 添加新数据源</h2>
+                <div class="ds-form">
+                    <div class="form-row">
+                        <label>数据源类型</label>
+                        <select id="ds-type" onchange="onDsTypeChange()">
+                            <option value="sqlite">SQLite（本地文件）</option>
+                            <option value="mysql">MySQL</option>
+                            <option value="postgresql">PostgreSQL</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>显示名称</label>
+                        <input type="text" id="ds-name" placeholder="如：生产环境 MySQL" />
+                    </div>
+                    <div class="form-row" data-server>
+                        <label>主机地址</label>
+                        <input type="text" id="ds-host" placeholder="如：localhost 或 192.168.1.10" />
+                    </div>
+                    <div class="form-row" data-server>
+                        <label>端口</label>
+                        <input type="number" id="ds-port" placeholder="MySQL 3306 / PostgreSQL 5432" />
+                    </div>
+                    <div class="form-row" data-server>
+                        <label>用户名</label>
+                        <input type="text" id="ds-username" placeholder="数据库账号" />
+                    </div>
+                    <div class="form-row" data-server>
+                        <label>密码</label>
+                        <input type="password" id="ds-password" placeholder="数据库密码" autocomplete="new-password" />
+                    </div>
+                    <div class="form-row">
+                        <label>数据库</label>
+                        <input type="text" id="ds-database" placeholder="SQLite 填文件路径（如 mydata.db，留空用默认）；MySQL/PG 填库名" />
+                    </div>
+                    <div class="form-actions">
+                        <button class="ds-test-btn" id="ds-test-btn" onclick="testDsConnection()">🔌 测试连接</button>
+                        <button class="ds-save-btn" id="ds-save-btn" onclick="saveDs()">💾 保存</button>
+                    </div>
+                    <div class="ds-form-status" id="ds-form-status"></div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/static/js/common.js"></script>
+    <script src="/static/js/datasources.js"></script>
+</body>
+</html>

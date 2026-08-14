@@ -46,8 +46,11 @@ def _build_connection_url(ds: dict) -> str:
     database = ds.get("database", "")
 
     if db_type == "sqlite":
-        # SQLite 使用默认本地文件
-        return "sqlite:///./data/demo.db"
+        # SQLite 支持指定文件路径：相对路径放在 data 目录下，或使用绝对路径
+        path = ds.get("database", "").strip() or "./data/demo.db"
+        if not os.path.isabs(path):
+            path = os.path.join("data", path)
+        return f"sqlite:///{path.replace(os.sep, '/')}"
     elif db_type == "mysql":
         port = port or 3306
         # mysql+pymysql://user:pass@host:port/db
@@ -268,6 +271,18 @@ def test_connection(datasource_id: str) -> dict:
     """测试指定数据源的连接"""
     try:
         engine = _get_engine(datasource_id)
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"success": True, "message": "连接成功"}
+    except Exception as e:
+        return {"success": False, "message": f"连接失败: {str(e)}"}
+
+
+def test_connection_config(ds_config: dict) -> dict:
+    """测试连接配置（前端添加数据源时，保存前测试）"""
+    try:
+        url = _build_connection_url(ds_config)
+        engine = create_engine(url, echo=False, pool_pre_ping=True)
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         return {"success": True, "message": "连接成功"}

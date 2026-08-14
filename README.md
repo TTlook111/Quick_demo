@@ -53,7 +53,7 @@
 | 数据库 | SQLite/MySQL/PostgreSQL + SQLAlchemy | 多引擎管理，SQLAlchemy Core 执行原始 SQL |
 | LLM | OpenAI SDK | 兼容所有 OpenAI 协议的模型（通义千问、DeepSeek 等） |
 | SQL 安全 | sqlparse | 语法解析 + 类型检查 + 黑名单关键词 |
-| 前端 | 原生 HTML/CSS/JS | 零框架零构建，单文件 SPA |
+| 前端 | 原生 HTML/CSS/JS | 零框架零构建，多页面（聊天页 + 数据源管理页） |
 | 图表 | Chart.js 4.x | 柱状图、折线图、饼图 |
 | 包管理 | uv | 极速 Python 包管理器 |
 
@@ -73,7 +73,16 @@ nl2sql-demo/
 │       ├── __init__.py
 │       └── query.py         # API 路由（查询/执行/解读/导出/历史）
 ├── static/
-│   └── index.html           # 前端页面（单文件 SPA）
+│   ├── index.html           # 聊天查询页（历史侧栏 + 数据源选择 + 结果渲染）
+│   ├── datasources.html     # 数据源管理页（添加/测试/删除/切换数据源）
+│   ├── css/
+│   │   ├── common.css       # 共享样式（变量/暗色主题/Toast）
+│   │   ├── main.css         # 聊天页样式
+│   │   └── datasources.css  # 数据源管理页样式
+│   └── js/
+│       ├── common.js        # 共享工具（Toast/主题/工具函数）
+│       ├── main.js          # 聊天页逻辑
+│       └── datasources.js   # 数据源管理页逻辑
 ├── scripts/
 │   └── init_db.py           # 初始化示例数据库脚本
 ├── data/

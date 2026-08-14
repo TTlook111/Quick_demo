@@ -10,7 +10,7 @@ from app.llm import generate_sql, explain_result, fix_sql
 from app.security import validate_sql, SQLSecurityError
 from app.db import (
     execute_sql, get_datasource_list, get_schema_info,
-    test_connection, refresh_schema_cache,
+    test_connection, test_connection_config, refresh_schema_cache,
     add_datasource, remove_datasource,
 )
 from app.history import save_history, get_history, delete_history, clear_history
@@ -59,7 +59,17 @@ class AddDatasourceRequest(BaseModel):
     port: int | None = None # 端口
     username: str = ""      # 用户名
     password: str = ""      # 密码
-    database: str = ""      # 数据库名
+    database: str = ""      # 数据库名（SQLite 为文件路径，MySQL/PG 为库名）
+
+
+class TestDatasourceRequest(BaseModel):
+    """测试连接请求体（保存前测试）"""
+    type: str               # sqlite | mysql | postgresql
+    host: str = ""
+    port: int | None = None
+    username: str = ""
+    password: str = ""
+    database: str = ""
 
 
 # ========== 数据源管理接口 ==========
@@ -93,6 +103,23 @@ async def create_datasource(request: AddDatasourceRequest):
 async def delete_datasource(datasource_id: str):
     """删除一个数据源"""
     result = remove_datasource(datasource_id)
+    return result
+
+
+@router.post("/datasources/test")
+async def test_datasource_config(request: TestDatasourceRequest):
+    """测试数据源连接配置（保存前测试）"""
+    ds_config = {
+        "type": request.type,
+        "host": request.host,
+        "port": request.port,
+        "username": request.username,
+        "password": request.password,
+        "database": request.database,
+    }
+    result = test_connection_config(ds_config)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
     return result
 
 

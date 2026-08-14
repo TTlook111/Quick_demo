@@ -38,6 +38,12 @@ async def root():
     return FileResponse("static/index.html")
 
 
+@app.get("/datasources")
+async def datasources_page():
+    """返回数据源管理页"""
+    return FileResponse("static/datasources.html")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, use_colors=False)
